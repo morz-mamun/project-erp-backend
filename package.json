@@ -1,0 +1,32 @@
+{
+  "name": "project-erp-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "mongoose": "^9.0.2"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.2.0",
+    "@commitlint/config-conventional": "^20.2.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.0.3",
+    "cors": "^2.8.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "nodemon": "^3.1.11",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3"
+  }
+}
