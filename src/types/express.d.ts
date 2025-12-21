@@ -1,6 +1,5 @@
-import { JwtPayload } from "jsonwebtoken";
 import mongoose from "mongoose";
-import { TRole } from "../../modules/auth/auth.user.interface";
+import { TRole } from "../app/modules/auth/auth.user.interface";
 
 declare global {
   namespace Express {
@@ -15,3 +14,5 @@ declare global {
     }
   }
 }
+
+export {};

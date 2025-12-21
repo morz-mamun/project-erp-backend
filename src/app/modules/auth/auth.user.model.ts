@@ -67,8 +67,7 @@ const UserSchema: Schema<IUser> = new mongoose.Schema(
   },
 );
 
-// Indexes
-UserSchema.index({ email: 1 });
+// Indexes (email and phone indexes are automatically created by unique: true)
 UserSchema.index({ companyId: 1, role: 1 });
 UserSchema.index({ companyId: 1, createdAt: -1 });
 

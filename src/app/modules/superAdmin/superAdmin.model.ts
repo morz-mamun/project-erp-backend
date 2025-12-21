@@ -45,8 +45,7 @@ const SuperAdminSchema: Schema<ISuperAdmin> = new mongoose.Schema(
   },
 );
 
-// Indexes
-SuperAdminSchema.index({ email: 1 });
+// Indexes are automatically created by unique: true on email field
 
 // Pre-save middleware: Hash password if modified
 SuperAdminSchema.pre("save", async function () {

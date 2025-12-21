@@ -84,8 +84,7 @@ const CompanySchema: Schema<ICompany> = new mongoose.Schema(
   },
 );
 
-// Indexes
-CompanySchema.index({ email: 1 });
+// Indexes (email index is automatically created by unique: true)
 CompanySchema.index({ status: 1 });
 CompanySchema.index({ createdAt: -1 });
 

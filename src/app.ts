@@ -39,9 +39,7 @@ app.get("/api", (req: Request, res: Response) => {
 app.use("/api", appRoutes);
 
 // ** API Endpoint Not Found **
-app.use("*", (req: Request, res: Response) => {
-  notFound(req, res);
-});
+app.use(notFound);
 
 // ** Error Handler **
 app.use(errorHandler);
