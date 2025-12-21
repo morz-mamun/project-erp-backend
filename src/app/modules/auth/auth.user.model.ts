@@ -6,7 +6,10 @@ import { UserRole } from "../../utils/enum/userRole";
 import AppError from "../../errors/functions/AppError";
 import { httpStatusCode } from "../../utils/enum/statusCode";
 
-// * User Schema
+/**
+ * User Schema (Company Admin, Manager, User)
+ * Multi-tenant: Each user belongs to a company
+ */
 const UserSchema: Schema<IUser> = new mongoose.Schema(
   {
     name: {
@@ -36,8 +39,16 @@ const UserSchema: Schema<IUser> = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: UserRole,
-      default: UserRole.USER,
+      enum: [UserRole.COMPANY_ADMIN, UserRole.MANAGER, UserRole.USER],
+      required: [true, "Please specify a role"],
+    },
+    companyId: {
+      type: Schema.Types.ObjectId,
+      ref: "Company",
+      required: [true, "User must be associated with a company"],
+    },
+    avatar: {
+      type: String,
     },
     isActive: {
       type: Boolean,
@@ -47,14 +58,21 @@ const UserSchema: Schema<IUser> = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    lastLogin: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
   },
 );
 
-// Pre-save middleware
+// Indexes
+UserSchema.index({ email: 1 });
+UserSchema.index({ companyId: 1, role: 1 });
+UserSchema.index({ companyId: 1, createdAt: -1 });
 
+// Pre-save middleware
 UserSchema.pre("save", async function () {
   // * Unique email & phone check (only on create)
   if (this.isNew) {
@@ -91,14 +109,18 @@ UserSchema.pre("save", async function () {
 
 // Instance Methods
 
-// * Compare password
+/**
+ * Compare password
+ */
 UserSchema.methods.matchPassword = async function (
   enteredPassword: string,
 ): Promise<boolean> {
   return bcrypt.compare(enteredPassword, this.password);
 };
 
-// * Update password
+/**
+ * Update password
+ */
 UserSchema.methods.updatePassword = async function (
   newPassword: string,
 ): Promise<void> {
@@ -107,7 +129,9 @@ UserSchema.methods.updatePassword = async function (
   await this.save();
 };
 
-// * Public profile response
+/**
+ * Public profile response
+ */
 UserSchema.methods.toProfileJSON = function () {
   return {
     id: this._id,
@@ -115,18 +139,22 @@ UserSchema.methods.toProfileJSON = function () {
     email: this.email,
     phone: this.phone,
     role: this.role,
+    companyId: this.companyId,
+    avatar: this.avatar,
     isActive: this.isActive,
+    lastLogin: this.lastLogin,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };
 };
 
-// * Admin check
-UserSchema.methods.isAdmin = function (): boolean {
-  return this.role === UserRole.ADMIN;
+/**
+ * Check if user is Company Admin
+ */
+UserSchema.methods.isCompanyAdmin = function (): boolean {
+  return this.role === UserRole.COMPANY_ADMIN;
 };
 
 // Model Export
-
 const User: Model<IUser> = mongoose.model<IUser>("User", UserSchema);
 export default User;

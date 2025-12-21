@@ -1,47 +1,35 @@
 import { NextFunction, Request, Response } from "express";
-
 import { AuthService } from "./auth.service";
 import sendResponse from "../../utils/sendResponse";
 import { httpStatusCode } from "../../utils/enum/statusCode";
 import { asyncHandler } from "../../utils/asyncHandler";
+import { configuration } from "../../config/config";
 
-// * Register a new user
-const registerUser = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
-  const result = await AuthService.registerUser(req.body);
-  sendResponse(res, {
-    statusCode: httpStatusCode.CREATED,
-    success: true,
-    message: "Registration successful.",
-    data: result,
-  });
-  next();
-};
-
-// * Login an existing user
+/**
+ * Login user (Company Admin, Manager, User)
+ */
 const loginUser = async (req: Request, res: Response, next: NextFunction) => {
   const result = await AuthService.loginUser(req.body);
-  //  set token in cookie
-  // Note: In production, set secure to true and use HTTPS
 
+  // Set token in cookie
   res.cookie("token", result.token, {
     httpOnly: true,
-    secure: false,
+    secure: configuration.env === "production",
     sameSite: "strict",
   });
+
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
     success: true,
-    message: "Login successful.",
+    message: "Login successful",
     data: result,
   });
   next();
 };
 
-// logout function to clear the token cookie
+/**
+ * Logout user
+ */
 const logoutUser = async (req: Request, res: Response, next: NextFunction) => {
   const token = req?.cookies?.token;
   if (!token) {
@@ -49,53 +37,59 @@ const logoutUser = async (req: Request, res: Response, next: NextFunction) => {
       new Error("You are not logged in! Please log in to get access."),
     );
   }
-  // Clear the token cookie
+
   res.clearCookie("token");
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
     success: true,
-    message: "Logout successful.",
+    message: "Logout successful",
   });
   next();
 };
 
-// * Update user profile (Accessible to manager and user)
+/**
+ * Update user profile
+ */
 const updateProfile = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  const user = req?.user;
-  const { userId: id } = user;
-  const result = await AuthService.updateProfile(id, req.body);
+  const { userId } = req.user!;
+  const result = await AuthService.updateProfile(userId.toString(), req.body);
+
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
     success: true,
-    message: "User profile updated successfully.",
+    message: "Profile updated successfully",
     data: result,
   });
   next();
 };
 
-// * Update user password (Accessible to manager and user))
+/**
+ * Update user password
+ */
 const updatePassword = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  const user = req?.user;
-  const { userId: id } = user;
-  const result = await AuthService.updatePassword(id, req.body);
+  const { userId } = req.user!;
+  const result = await AuthService.updatePassword(userId.toString(), req.body);
+
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
     success: true,
-    message: "Password updated successfully.",
+    message: "Password updated successfully",
     data: result,
   });
   next();
 };
 
-// * Update user delete status (Accessible to manager and user)
+/**
+ * Soft delete user (deactivate)
+ */
 const updateDeletedStatus = async (
   req: Request,
   res: Response,
@@ -103,43 +97,70 @@ const updateDeletedStatus = async (
 ) => {
   const { id } = req.params;
   const result = await AuthService.updateDeletedStatus(id);
+
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
     success: true,
-    message: "User deactivated successfully.",
+    message: "User deactivated successfully",
     data: result,
   });
   next();
 };
 
-// * Retrieve all users (Admin only)
+/**
+ * Get all users in company (Company Admin)
+ */
 const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
-  const result = await AuthService.getAllUsers(req.query);
+  const { companyId } = req.user!;
+  const result = await AuthService.getAllUsers(
+    companyId!.toString(),
+    req.query as any,
+  );
+
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
     success: true,
-    message: "Users retrieved successfully.",
+    message: "Users retrieved successfully",
     data: result,
   });
   next();
 };
 
-// * Update user role (Admin only)
+/**
+ * Create new user (Company Admin)
+ */
+const createUser = async (req: Request, res: Response, next: NextFunction) => {
+  const { companyId } = req.user!;
+  const result = await AuthService.createUser(companyId!.toString(), req.body);
+
+  sendResponse(res, {
+    statusCode: httpStatusCode.CREATED,
+    success: true,
+    message: "User created successfully",
+    data: result,
+  });
+  next();
+};
+
+/**
+ * Update user role (Company Admin)
+ */
 const updateRole = async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const result = await AuthService.updateRole(id, req.body);
+
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
     success: true,
-    message: "User role updated successfully.",
+    message: "User role updated successfully",
     data: result,
   });
   next();
 };
 
-// update user active status (Admin only)
-
-// * Update user active status (Admin only)
+/**
+ * Toggle user active status (Company Admin)
+ */
 const updateActiveStatus = async (
   req: Request,
   res: Response,
@@ -147,23 +168,24 @@ const updateActiveStatus = async (
 ) => {
   const { id } = req.params;
   const result = await AuthService.updateActiveStatus(id);
+
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
     success: true,
-    message: "User status updated successfully.",
+    message: "User status updated successfully",
     data: result,
   });
   next();
 };
 
 export const AuthController = {
-  registerUser: asyncHandler(registerUser),
   loginUser: asyncHandler(loginUser),
+  logoutUser: asyncHandler(logoutUser),
   updateProfile: asyncHandler(updateProfile),
   updatePassword: asyncHandler(updatePassword),
   updateDeletedStatus: asyncHandler(updateDeletedStatus),
   getAllUsers: asyncHandler(getAllUsers),
+  createUser: asyncHandler(createUser),
   updateRole: asyncHandler(updateRole),
   updateActiveStatus: asyncHandler(updateActiveStatus),
-  logoutUser: asyncHandler(logoutUser),
 };

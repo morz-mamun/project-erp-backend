@@ -1,14 +1,17 @@
 import { JwtPayload } from "jsonwebtoken";
-
-interface CustomJwtPayload extends JwtPayload {
-  role?: string;
-  email?: string;
-}
+import mongoose from "mongoose";
+import { TRole } from "../../modules/auth/auth.user.interface";
 
 declare global {
   namespace Express {
     interface Request {
-      user: CustomJwtPayload;
+      user?: {
+        userId: mongoose.Types.ObjectId;
+        email: string;
+        role: TRole;
+        companyId?: mongoose.Types.ObjectId;
+      };
+      tenantFilter: Record<string, any>;
     }
   }
 }

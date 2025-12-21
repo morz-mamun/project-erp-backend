@@ -1,39 +1,70 @@
 import { z } from "zod";
+import { UserRole } from "../../utils/enum/userRole";
 
-const registerUserZodSchema = z.object({
+/**
+ * Login validation
+ */
+const loginSchema = z.object({
   body: z.object({
-    // * Name must be at least 5 characters
-    name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-    // * Must be a valid email address
-    email: z.email({ message: "Invalid email address" }),
-    // * Phone number is required (you can adjust the min length as needed)
-    phone: z
-      .string()
-      .min(10, { message: "Phone number must be at least 10 digits" }),
-    // * Password must be between 6 and 20 characters
-    password: z
-      .string()
-      .min(6, { message: "Password must be at least 6 characters" })
-      .max(50, { message: "Password must be at most 50 characters" }),
-    // role will be default to user
-    role: z.enum(["user", "admin", "manager"]).default("user"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
   }),
 });
 
-const updateProfileZodSchema = z.object({
+/**
+ * Update profile validation
+ */
+const updateProfileSchema = z.object({
   body: z.object({
-    // * Name must be at least 5 characters
-    name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-    // * Must be a valid email address
-    email: z.email({ message: "Invalid email address" }),
-    // * Phone number is required for profile update as well
+    name: z.string().min(2, "Name must be at least 2 characters").optional(),
     phone: z
       .string()
-      .min(10, { message: "Phone number must be at least 10 digits" }),
+      .min(10, "Phone number must be at least 10 digits")
+      .optional(),
+    avatar: z.string().url("Invalid avatar URL").optional(),
+  }),
+});
+
+/**
+ * Update password validation
+ */
+const updatePasswordSchema = z.object({
+  body: z.object({
+    currentPassword: z
+      .string()
+      .min(6, "Current password must be at least 6 characters"),
+    newPassword: z
+      .string()
+      .min(6, "New password must be at least 6 characters"),
+  }),
+});
+
+/**
+ * Create user validation
+ */
+const createUserSchema = z.object({
+  body: z.object({
+    name: z.string().min(1, "Name is required"),
+    email: z.string().email("Invalid email address"),
+    phone: z.string().min(10, "Phone number must be at least 10 digits"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    role: z.enum([UserRole.COMPANY_ADMIN, UserRole.MANAGER, UserRole.USER]),
+  }),
+});
+
+/**
+ * Update user role validation
+ */
+const updateRoleSchema = z.object({
+  body: z.object({
+    role: z.enum([UserRole.COMPANY_ADMIN, UserRole.MANAGER, UserRole.USER]),
   }),
 });
 
 export const AuthValidation = {
-  registerUserZodSchema,
-  updateProfileZodSchema,
+  loginSchema,
+  updateProfileSchema,
+  updatePasswordSchema,
+  createUserSchema,
+  updateRoleSchema,
 };

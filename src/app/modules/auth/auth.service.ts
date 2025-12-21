@@ -1,95 +1,114 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import { IUser, TJwtPayload, TRole } from "./auth.user.interface";
+import { IUser, TJwtPayload } from "./auth.user.interface";
 import User from "./auth.user.model";
+import Company from "../company/company.model";
 import { createToken } from "./auth.utils";
 import AppError from "../../errors/functions/AppError";
 import { httpStatusCode } from "../../utils/enum/statusCode";
+import { CompanyStatus } from "../../utils/enum/companyStatus";
 
-// * Register a new user
-const registerUser = async (
-  payload: Partial<IUser>,
-): Promise<Partial<IUser>> => {
-  const user = await User.create(payload);
-  const userWithoutPassword = { ...user.toJSON(), password: undefined };
-  return userWithoutPassword;
-};
-
-// * Login an existing user
+/**
+ * Login user (Company Admin, Manager, User)
+ * Multi-tenant: Verifies company is approved and active
+ */
 const loginUser = async (payload: {
   email: string;
   password: string;
 }): Promise<{ token: string; user: Partial<IUser> }> => {
   const { email, password } = payload;
-  // console.log(email, password);
 
-  // * Try to get user data with password by email
-  const user = await User.findOne({ email }).select("+password");
+  // Find user with password
+  const user = await User.findOne({ email })
+    .select("+password")
+    .populate("companyId");
   if (!user) {
     throw new AppError(httpStatusCode.NOT_FOUND, "User not found");
   }
+
+  // Check if user is active
   if (user.isActive === false) {
     throw new AppError(httpStatusCode.FORBIDDEN, "Your account is deactivated");
   }
 
-  // * Compare password
+  // Verify company status
+  const company = await Company.findById(user.companyId);
+  if (!company) {
+    throw new AppError(httpStatusCode.NOT_FOUND, "Company not found");
+  }
+
+  if (company.status !== CompanyStatus.APPROVED) {
+    throw new AppError(
+      httpStatusCode.FORBIDDEN,
+      "Your company is not approved yet. Please wait for admin approval.",
+    );
+  }
+
+  if (!company.isActive) {
+    throw new AppError(httpStatusCode.FORBIDDEN, "Your company is suspended");
+  }
+
+  // Verify password
   const isPasswordMatched = await user.matchPassword(password);
   if (!isPasswordMatched) {
     throw new AppError(httpStatusCode.UNAUTHORIZED, "Invalid credentials");
   }
 
-  // * Generate token payload
+  // Generate JWT token
   const jwtPayload: TJwtPayload = {
     email: user.email,
     userId: user._id as mongoose.Types.ObjectId,
     role: user.role,
+    companyId: user.companyId as mongoose.Types.ObjectId,
   };
 
-  // * Generate token
   const token = createToken(jwtPayload);
+
+  // Update last login
+  user.lastLogin = new Date();
+  await user.save();
 
   return {
     token,
-    user: {
-      phone: user.phone,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      _id: user._id,
-    },
+    user: user.toProfileJSON(),
   };
 };
 
-// * Update user profile (Accessible to Managers and Users)
+/**
+ * Update user profile
+ */
 const updateProfile = async (
   id: string,
   payload: Partial<IUser>,
 ): Promise<Partial<IUser>> => {
-  const updatedUser = await User.findByIdAndUpdate(id, payload, { new: true });
+  // Prevent role, companyId, and password updates through this method
+  const { role, companyId, password, ...updateData } = payload;
+
+  const updatedUser = await User.findByIdAndUpdate(id, updateData, {
+    new: true,
+  });
   if (!updatedUser) {
     throw new AppError(httpStatusCode.NOT_FOUND, "User not found");
   }
-  return {
-    phone: updatedUser.phone,
-    email: updatedUser.email,
-    name: updatedUser.name,
-    role: updatedUser.role,
-    _id: updatedUser._id,
-  };
+
+  return updatedUser.toProfileJSON();
 };
 
-// * Update user password (Accessible to Managers and Users)
+/**
+ * Update user password
+ */
 const updatePassword = async (
   id: string,
   payload: { currentPassword: string; newPassword: string },
 ): Promise<IUser> => {
   const { currentPassword, newPassword } = payload;
+
   const user = await User.findById(id).select("+password");
   if (!user) {
     throw new AppError(httpStatusCode.NOT_FOUND, "User not found");
   }
 
-  // * Verify current password
+  // Verify current password
   const isPasswordMatched = await bcrypt.compare(
     currentPassword,
     user.password,
@@ -98,7 +117,7 @@ const updatePassword = async (
     throw new AppError(httpStatusCode.UNAUTHORIZED, "Invalid credentials");
   }
 
-  // * Hash new password and update
+  // Hash new password and update
   const salt = await bcrypt.genSalt(10);
   const updatedPassword = await bcrypt.hash(newPassword, salt);
   await User.findByIdAndUpdate(
@@ -107,11 +126,12 @@ const updatePassword = async (
     { new: true },
   );
 
-  // * Fetch the updated user and verify new password
+  // Fetch the updated user and verify new password
   const updatedUser = await User.findById(id).select("+password");
   if (!updatedUser) {
     throw new AppError(httpStatusCode.NOT_FOUND, "User not found");
   }
+
   const passwordMatch = await updatedUser.matchPassword(newPassword);
   if (!passwordMatch) {
     throw new AppError(
@@ -119,11 +139,13 @@ const updatePassword = async (
       "Password update failed",
     );
   }
+
   return updatedUser;
 };
 
-// * Update user delete status (Accessible to Managers and Users)
-// Note: This function deactivates a user by setting isActive to false.
+/**
+ * Soft delete user (deactivate)
+ */
 const updateDeletedStatus = async (id: string): Promise<IUser> => {
   const updatedUser = await User.findByIdAndUpdate(
     id,
@@ -136,27 +158,37 @@ const updateDeletedStatus = async (id: string): Promise<IUser> => {
   return updatedUser;
 };
 
-// * Retrieve all users (Admin only) with pagination and optional email filtering
+/**
+ * Get all users in company (Company Admin only)
+ */
 const getAllUsers = async (
-  queryOptions: { email?: string; page?: number; limit?: number } = {},
+  companyId: string,
+  queryOptions: {
+    email?: string;
+    role?: string;
+    page?: number;
+    limit?: number;
+  } = {},
 ): Promise<{
   users: IUser[];
   metadata: { total: number; page: number; limit: number };
 }> => {
-  const { email, page = 1, limit = 10 } = queryOptions;
-  const filter: { email?: { $regex: string; $options: string } } = {};
+  const { email, role, page = 1, limit = 10 } = queryOptions;
+  const filter: any = { companyId };
 
-  // * If email is provided, search using case-insensitive regex.
   if (email) {
     filter.email = { $regex: email, $options: "i" };
   }
+  if (role) {
+    filter.role = role;
+  }
 
-  // * Calculate how many documents to skip.
   const skip = (page - 1) * limit;
 
-  // * Fetch the users with pagination.
-  const users = await User.find(filter).skip(skip).limit(limit);
-  // * Get the total count of users matching the filter.
+  const users = await User.find(filter)
+    .skip(skip)
+    .limit(limit)
+    .sort({ createdAt: -1 });
   const total = await User.countDocuments(filter);
 
   return {
@@ -169,11 +201,12 @@ const getAllUsers = async (
   };
 };
 
-// * Update user role (Admin only)
-// Updated to accept a new role in the payload
+/**
+ * Update user role (Company Admin only)
+ */
 const updateRole = async (
   id: string,
-  payload: { role: TRole },
+  payload: { role: any },
 ): Promise<IUser> => {
   const updatedUser = await User.findByIdAndUpdate(id, payload, { new: true });
   if (!updatedUser) {
@@ -182,12 +215,15 @@ const updateRole = async (
   return updatedUser;
 };
 
-// * Update user active status (Admin only) by toggling isActive
+/**
+ * Toggle user active status (Company Admin only)
+ */
 const updateActiveStatus = async (id: string): Promise<IUser> => {
   const user = await User.findById(id);
   if (!user) {
     throw new AppError(httpStatusCode.NOT_FOUND, "User not found");
   }
+
   const updatedUser = await User.findByIdAndUpdate(
     id,
     { isActive: !user.isActive },
@@ -199,8 +235,22 @@ const updateActiveStatus = async (id: string): Promise<IUser> => {
   return updatedUser;
 };
 
+/**
+ * Create new user (Company Admin only)
+ */
+const createUser = async (
+  companyId: string,
+  payload: Partial<IUser>,
+): Promise<Partial<IUser>> => {
+  const user = await User.create({
+    ...payload,
+    companyId,
+  });
+
+  return user.toProfileJSON();
+};
+
 export const AuthService = {
-  registerUser,
   loginUser,
   updateProfile,
   updatePassword,
@@ -208,4 +258,5 @@ export const AuthService = {
   getAllUsers,
   updateRole,
   updateActiveStatus,
+  createUser,
 };

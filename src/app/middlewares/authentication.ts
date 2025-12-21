@@ -1,15 +1,22 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
-import { TJwtPayload, TRole } from "../modules/auth/auth.user.interface";
+import { TJwtPayload } from "../modules/auth/auth.user.interface";
+import { UserRole } from "../utils/enum/userRole";
 import AppError from "../errors/functions/AppError";
 import { httpStatusCode } from "../utils/enum/statusCode";
 import { verifyToken } from "../modules/auth/auth.utils";
 import User from "../modules/auth/auth.user.model";
+import SuperAdmin from "../modules/superAdmin/superAdmin.model";
 import simplifyError from "../errors/simplifyError";
 import sendError from "../errors/sendError";
 
-export default function Authentication(...requiredRoles: TRole[]) {
+/**
+ * Authentication Middleware
+ * Verifies JWT token and attaches user data to request
+ * Supports both SuperAdmin and regular users (Company Admin, Manager, User)
+ */
+export default function Authentication() {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const authHeader = req.headers.authorization;
@@ -33,7 +40,7 @@ export default function Authentication(...requiredRoles: TRole[]) {
       }
 
       // * Validate the token payload
-      const { email, userId, role } = decoded;
+      const { email, userId, role, companyId } = decoded;
       if (!email) {
         throw new AppError(
           httpStatusCode.UNAUTHORIZED,
@@ -55,18 +62,47 @@ export default function Authentication(...requiredRoles: TRole[]) {
         );
       }
 
-      // * Check if the user exists
-      const user = await User.findById(userId);
-      const isUserExist = await User.findOne({ email });
-      if (!isUserExist) {
-        throw new AppError(httpStatusCode.NOT_FOUND, "This user is not found!");
+      // * Check if the user exists based on role
+      let user: any;
+
+      if (role === UserRole.SUPER_ADMIN) {
+        // Check SuperAdmin model
+        user = await SuperAdmin.findById(userId);
+        if (!user) {
+          throw new AppError(
+            httpStatusCode.NOT_FOUND,
+            "Super Admin not found!",
+          );
+        }
+      } else {
+        // Check regular User model
+        user = await User.findById(userId);
+        const isUserExist = await User.findOne({ email });
+
+        if (!isUserExist) {
+          throw new AppError(
+            httpStatusCode.NOT_FOUND,
+            "This user is not found!",
+          );
+        }
+
+        if (!user) {
+          throw new AppError(
+            httpStatusCode.NOT_FOUND,
+            "This user is not found!",
+          );
+        }
+
+        // Verify companyId for non-super-admin users
+        if (!companyId) {
+          throw new AppError(
+            httpStatusCode.UNAUTHORIZED,
+            "User must be associated with a company!",
+          );
+        }
       }
 
-      if (!user) {
-        throw new AppError(httpStatusCode.NOT_FOUND, "This user is not found!");
-      }
-
-      // * Check if the user is blocked
+      // * Check if the user is active
       if (user.isActive === false) {
         throw new AppError(
           httpStatusCode.FORBIDDEN,
@@ -74,16 +110,13 @@ export default function Authentication(...requiredRoles: TRole[]) {
         );
       }
 
-      // * Check if the user has the required role
-      if (requiredRoles.length && !requiredRoles.includes(role)) {
-        throw new AppError(
-          httpStatusCode.FORBIDDEN,
-          "You are not authorized to perform this action!",
-        );
-      }
-
       // * Attach user information to the request object
-      req.user = decoded;
+      req.user = {
+        userId: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+        companyId: decoded.companyId,
+      };
 
       // * Move to the next middleware
       next();

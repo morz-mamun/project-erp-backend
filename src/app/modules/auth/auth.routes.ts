@@ -1,67 +1,95 @@
 import { Router } from "express";
-
 import { AuthController } from "./auth.controller";
-import { AuthValidation } from "./auth.validation";
-import validateRequest from "../../middlewares/validateRequest";
 import Authentication from "../../middlewares/authentication";
+import { authorize } from "../../middlewares/rbac";
 import { UserRole } from "../../utils/enum/userRole";
+import activityLogger from "../../middlewares/activityLogger";
 
 const router = Router();
 
-// * Register a new user
-router.post(
-  "/register",
-  validateRequest(AuthValidation.registerUserZodSchema),
-  AuthController.registerUser,
-);
-
-// * Login an existing user
+/**
+ * Login user (public)
+ */
 router.post("/login", AuthController.loginUser);
 
-// * Logout user
+/**
+ * Logout user
+ */
 router.post("/logout", AuthController.logoutUser);
 
-// * Update user profile (Accessible to all authenticated users)
+/**
+ * Update user profile (authenticated)
+ */
 router.patch(
-  "/update-profile",
-  Authentication(UserRole.MANAGER, UserRole.USER, UserRole.ADMIN),
-  validateRequest(AuthValidation.updateProfileZodSchema),
+  "/profile",
+  Authentication(),
+  authorize(UserRole.COMPANY_ADMIN, UserRole.MANAGER, UserRole.USER),
+  activityLogger("UPDATE_PROFILE", "User"),
   AuthController.updateProfile,
 );
 
-// * Update user password (Accessible to all authenticated users)
+/**
+ * Update user password (authenticated)
+ */
 router.patch(
-  "/update-password",
-  Authentication(UserRole.MANAGER, UserRole.USER, UserRole.ADMIN),
+  "/password",
+  Authentication(),
+  authorize(UserRole.COMPANY_ADMIN, UserRole.MANAGER, UserRole.USER),
   AuthController.updatePassword,
 );
 
-// * Update user delete status (isDeleted property) (Accessible to MANAGERs and USERs)
-router.post(
-  "/:id/delete",
-  Authentication(UserRole.MANAGER, UserRole.USER),
-  AuthController.updateDeletedStatus,
-);
-
-// * Retrieve all users (Admin only)
+/**
+ * Get all users in company (Company Admin)
+ */
 router.get(
-  "/getAll",
-  Authentication(UserRole.ADMIN),
+  "/users",
+  Authentication(),
+  authorize(UserRole.COMPANY_ADMIN),
   AuthController.getAllUsers,
 );
 
-// * Update user role (Admin only)
+/**
+ * Create new user (Company Admin)
+ */
+router.post(
+  "/users",
+  Authentication(),
+  authorize(UserRole.COMPANY_ADMIN),
+  activityLogger("CREATE_USER", "User"),
+  AuthController.createUser,
+);
+
+/**
+ * Update user role (Company Admin)
+ */
 router.patch(
-  "/:id/role",
-  Authentication(UserRole.ADMIN),
+  "/users/:id/role",
+  Authentication(),
+  authorize(UserRole.COMPANY_ADMIN),
+  activityLogger("UPDATE_USER_ROLE", "User"),
   AuthController.updateRole,
 );
 
-// * Update user active status (isActive property) (Admin only)
+/**
+ * Toggle user active status (Company Admin)
+ */
 router.patch(
-  "/:id/active",
-  Authentication(UserRole.ADMIN),
+  "/users/:id/active",
+  Authentication(),
+  authorize(UserRole.COMPANY_ADMIN),
+  activityLogger("UPDATE_USER_STATUS", "User"),
   AuthController.updateActiveStatus,
+);
+
+/**
+ * Soft delete user (Company Admin, Manager)
+ */
+router.post(
+  "/users/:id/delete",
+  Authentication(),
+  authorize(UserRole.COMPANY_ADMIN, UserRole.MANAGER),
+  activityLogger("DELETE_USER", "User"),
+  AuthController.updateDeletedStatus,
 );
 
 export const AuthRoutes = router;

@@ -10,6 +10,7 @@ export default defineConfig([
     extends: ["js/recommended", ...tseslint.configs.recommended],
     languageOptions: { globals: globals.browser },
     rules: {
+      "@typescript-eslint/no-explicit-any": "off",
       "no-unused-vars": "warn",
       "@typescript-eslint/no-unused-vars": "warn",
       "no-undef": "warn",
@@ -25,5 +26,4 @@ export default defineConfig([
       "commitlint.config.mjs",
     ],
   },
-  tseslint.configs.recommended,
 ]);
