@@ -1,1 +1,1 @@
-pnpm exec lint-stagedchmod +x .husky/*
+pnpm test
