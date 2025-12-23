@@ -8,70 +8,115 @@ import AppError from "../../errors/functions/AppError";
 import { httpStatusCode } from "../../utils/enum/statusCode";
 import { CompanyStatus } from "../../utils/enum/companyStatus";
 
+import SuperAdmin from "../superAdmin/superAdmin.model";
+
 /**
- * Login user (Company Admin, Manager, User)
- * Multi-tenant: Verifies company is approved and active
+ * Login user (Company Admin, Manager, User, Super Admin)
+ * Multi-tenant: Verifies company is approved and active for regular users
  */
 const loginUser = async (payload: {
   email: string;
   password: string;
-}): Promise<{ token: string; user: Partial<IUser> }> => {
+}): Promise<{ accessToken: string; user: Partial<IUser> }> => {
   const { email, password } = payload;
 
-  // Find user with password
+  // 1. Check if user exists in User collection
   const user = await User.findOne({ email })
     .select("+password")
     .populate("companyId");
-  if (!user) {
-    throw new AppError(httpStatusCode.NOT_FOUND, "User not found");
+
+  if (user) {
+    // Check if user is active
+    if (user.isActive === false) {
+      throw new AppError(
+        httpStatusCode.FORBIDDEN,
+        "Your account is deactivated",
+      );
+    }
+
+    // Verify company status
+    const company = await Company.findById(user.companyId);
+    if (!company) {
+      throw new AppError(httpStatusCode.NOT_FOUND, "Company not found");
+    }
+
+    if (company.status !== CompanyStatus.APPROVED) {
+      throw new AppError(
+        httpStatusCode.FORBIDDEN,
+        "Your company is not approved yet. Please wait for admin approval.",
+      );
+    }
+
+    if (!company.isActive) {
+      throw new AppError(httpStatusCode.FORBIDDEN, "Your company is suspended");
+    }
+
+    // Verify password
+    const isPasswordMatched = await user.matchPassword(password);
+    if (!isPasswordMatched) {
+      throw new AppError(httpStatusCode.UNAUTHORIZED, "Invalid credentials");
+    }
+
+    // Generate JWT token
+    const jwtPayload: TJwtPayload = {
+      email: user.email,
+      userId: user._id as mongoose.Types.ObjectId,
+      role: user.role,
+      companyId: user.companyId as mongoose.Types.ObjectId,
+    };
+
+    const token = createToken(jwtPayload);
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    return {
+      accessToken: token,
+      user: user.toProfileJSON(),
+    };
   }
 
-  // Check if user is active
-  if (user.isActive === false) {
-    throw new AppError(httpStatusCode.FORBIDDEN, "Your account is deactivated");
+  // 2. If not in User, check SuperAdmin collection
+  const superAdmin = await SuperAdmin.findOne({ email }).select("+password");
+
+  if (superAdmin) {
+    // Check if active
+    if (!superAdmin.isActive) {
+      throw new AppError(
+        httpStatusCode.FORBIDDEN,
+        "Super Admin account is deactivated",
+      );
+    }
+
+    // Verify password
+    const isPasswordMatched = await superAdmin.matchPassword(password);
+    if (!isPasswordMatched) {
+      throw new AppError(httpStatusCode.UNAUTHORIZED, "Invalid credentials");
+    }
+
+    // Generate JWT token
+    const jwtPayload: TJwtPayload = {
+      email: superAdmin.email,
+      userId: superAdmin._id as mongoose.Types.ObjectId,
+      role: superAdmin.role as any, // Cast to any or appropriate role type if needed
+      companyId: undefined, // Super Admin has no company
+    };
+
+    const token = createToken(jwtPayload);
+
+    // Update last login
+    superAdmin.lastLogin = new Date();
+    await superAdmin.save();
+
+    return {
+      accessToken: token,
+      user: superAdmin.toProfileJSON() as any, // Cast to partial IUser for consistency
+    };
   }
 
-  // Verify company status
-  const company = await Company.findById(user.companyId);
-  if (!company) {
-    throw new AppError(httpStatusCode.NOT_FOUND, "Company not found");
-  }
-
-  if (company.status !== CompanyStatus.APPROVED) {
-    throw new AppError(
-      httpStatusCode.FORBIDDEN,
-      "Your company is not approved yet. Please wait for admin approval.",
-    );
-  }
-
-  if (!company.isActive) {
-    throw new AppError(httpStatusCode.FORBIDDEN, "Your company is suspended");
-  }
-
-  // Verify password
-  const isPasswordMatched = await user.matchPassword(password);
-  if (!isPasswordMatched) {
-    throw new AppError(httpStatusCode.UNAUTHORIZED, "Invalid credentials");
-  }
-
-  // Generate JWT token
-  const jwtPayload: TJwtPayload = {
-    email: user.email,
-    userId: user._id as mongoose.Types.ObjectId,
-    role: user.role,
-    companyId: user.companyId as mongoose.Types.ObjectId,
-  };
-
-  const token = createToken(jwtPayload);
-
-  // Update last login
-  user.lastLogin = new Date();
-  await user.save();
-
-  return {
-    token,
-    user: user.toProfileJSON(),
-  };
+  // 3. User not found in either collection
+  throw new AppError(httpStatusCode.NOT_FOUND, "User not found");
 };
 
 /**

@@ -12,7 +12,7 @@ const loginUser = async (req: Request, res: Response, next: NextFunction) => {
   const result = await AuthService.loginUser(req.body);
 
   // Set token in cookie
-  res.cookie("token", result.token, {
+  res.cookie("token", result.accessToken, {
     httpOnly: true,
     secure: configuration.env === "production",
     sameSite: "strict",
