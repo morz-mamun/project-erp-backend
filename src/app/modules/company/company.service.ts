@@ -140,7 +140,7 @@ const getCompanyById = async (id: string): Promise<ICompany> => {
  */
 const approveCompany = async (
   id: string,
-  payload: { subscription?: any },
+  payload: { subscription?: any } = {},
 ): Promise<ICompany> => {
   const company = await Company.findById(id);
   if (!company) {
