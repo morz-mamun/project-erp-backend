@@ -20,6 +20,28 @@ const GlobalSettingsSchema: Schema<IGlobalSettings> = new mongoose.Schema(
       type: String,
       default: "support@erp.com",
     },
+    planLimits: {
+      FREE: {
+        maxUsers: { type: Number, default: 2 },
+        maxProducts: { type: Number, default: 50 },
+        features: { type: [String], default: [] },
+      },
+      BASIC: {
+        maxUsers: { type: Number, default: 5 },
+        maxProducts: { type: Number, default: 500 },
+        features: { type: [String], default: [] },
+      },
+      PREMIUM: {
+        maxUsers: { type: Number, default: 20 },
+        maxProducts: { type: Number, default: 5000 },
+        features: { type: [String], default: [] },
+      },
+      ENTERPRISE: {
+        maxUsers: { type: Number, default: 9999 },
+        maxProducts: { type: Number, default: 999999 },
+        features: { type: [String], default: [] },
+      },
+    },
   },
   {
     timestamps: true,

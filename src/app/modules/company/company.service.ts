@@ -156,8 +156,20 @@ const approveCompany = async (
 
   // Update company status
   company.status = CompanyStatus.APPROVED;
-  if (payload.subscription) {
-    company.subscription = { ...company.subscription, ...payload.subscription };
+
+  // Safe update of subscription if payload exists
+  const safePayload = payload || {};
+  if (safePayload.subscription) {
+    // Ensure company.subscription is treated as an object for spreading
+    // Mongoose documents can sometimes behave oddly with spread if not converted,
+    // but here we just need to ensure we don't spread undefined.
+    const currentSubscription = company.subscription
+      ? company.subscription
+      : {};
+    company.subscription = {
+      ...currentSubscription,
+      ...safePayload.subscription,
+    };
   }
   await company.save();
 
