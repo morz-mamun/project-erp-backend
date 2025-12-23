@@ -12,6 +12,8 @@ const router = Router();
 router.use(Authentication());
 router.use(tenantIsolation);
 
+import { upload } from "../../middlewares/upload.middleware";
+
 // ============ CATEGORY ROUTES ============
 
 /**
@@ -110,6 +112,7 @@ router.post(
   authorize(UserRole.COMPANY_ADMIN, UserRole.MANAGER),
   requirePermission("product", "create"),
   activityLogger("CREATE_PRODUCT", "Product"),
+  upload.array("images", 5),
   ProductController.createProduct,
 );
 

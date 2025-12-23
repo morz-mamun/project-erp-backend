@@ -99,4 +99,13 @@ export const SuperAdminController = {
   getSuperAdminProfile: asyncHandler(getSuperAdminProfile),
   updateSuperAdminProfile: asyncHandler(updateSuperAdminProfile),
   updateSuperAdminPassword: asyncHandler(updateSuperAdminPassword),
+  getSystemAnalytics: asyncHandler(async (req: Request, res: Response) => {
+    const result = await SuperAdminService.getSystemAnalytics();
+    sendResponse(res, {
+      statusCode: httpStatusCode.OK,
+      success: true,
+      message: "System analytics retrieved successfully",
+      data: result,
+    });
+  }),
 };

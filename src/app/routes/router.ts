@@ -7,6 +7,7 @@ import { InventoryRoutes } from "../modules/inventory/inventory.routes";
 import { SalesRoutes } from "../modules/sales/sales.routes";
 import { CustomerRoutes } from "../modules/customer/customer.routes";
 import { RoleRequestRoutes } from "../modules/roleRequest/roleRequest.routes";
+import { GlobalSettingsRoutes } from "../modules/globalSettings/globalSettings.routes";
 
 const appRoutes = Router();
 
@@ -18,6 +19,10 @@ const moduleRoutes = [
   {
     path: "/super-admin",
     route: SuperAdminRoutes,
+  },
+  {
+    path: "/global-settings",
+    route: GlobalSettingsRoutes,
   },
   {
     path: "/companies",

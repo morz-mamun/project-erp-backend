@@ -140,10 +140,22 @@ const createProduct = async (
   next: NextFunction,
 ) => {
   const { companyId, userId } = req.user!;
+  let imagePayload = req.body;
+
+  // Handle Image Uploads
+  if (req.files && Array.isArray(req.files)) {
+    const { uploadToCloudinary } = await import("../../utils/cloudinary");
+    const uploadPromises = (req.files as Express.Multer.File[]).map((file) =>
+      uploadToCloudinary(file, "products"),
+    );
+    const images = await Promise.all(uploadPromises);
+    imagePayload = { ...req.body, images };
+  }
+
   const result = await ProductService.createProduct(
     companyId!.toString(),
     userId.toString(),
-    req.body,
+    imagePayload,
   );
 
   sendResponse(res, {

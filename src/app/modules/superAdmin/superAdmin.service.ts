@@ -119,9 +119,42 @@ const updateSuperAdminPassword = async (
   await superAdmin.save();
 };
 
+/**
+ * Get System Analytics (Super Admin)
+ * @returns System wide statistics
+ */
+const getSystemAnalytics = async (): Promise<any> => {
+  const [
+    // Count total companies
+    totalCompanies,
+    // Count active companies
+    activeCompanies,
+    // Count total users
+    totalUsers,
+    // Count total products
+    totalProducts,
+  ] = await Promise.all([
+    mongoose.model("Company").countDocuments(),
+    mongoose.model("Company").countDocuments({ isActive: true }),
+    mongoose.model("User").countDocuments(),
+    mongoose.model("Product").countDocuments(),
+  ]);
+
+  return {
+    totalCompanies,
+    activeCompanies,
+    totalUsers,
+    totalProducts,
+    // Mock revenue for now as there is no Subscription/Payment module yet
+    totalRevenue: 0,
+    activeCustomPlans: 0,
+  };
+};
+
 export const SuperAdminService = {
   loginSuperAdmin,
   getSuperAdminProfile,
   updateSuperAdminProfile,
   updateSuperAdminPassword,
+  getSystemAnalytics,
 };

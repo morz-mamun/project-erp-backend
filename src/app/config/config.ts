@@ -13,4 +13,8 @@ export const configuration = {
     secret: process.env.JWT_SECRET ?? "secret",
     expiresIn: process.env.JWT_EXPIRES_IN ?? "1d",
   },
+  superAdmin: {
+    email: process.env.SUPER_ADMIN_EMAIL,
+    password: process.env.SUPER_ADMIN_PASSWORD,
+  },
 };

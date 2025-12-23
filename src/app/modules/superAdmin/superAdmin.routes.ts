@@ -37,4 +37,13 @@ router.patch(
   SuperAdminController.updateSuperAdminPassword,
 );
 
+/**
+ * Get System Analytics (authenticated)
+ */
+router.get(
+  "/analytics",
+  Authentication(),
+  SuperAdminController.getSystemAnalytics,
+);
+
 export const SuperAdminRoutes = router;
