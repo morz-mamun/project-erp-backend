@@ -19,20 +19,29 @@ import sendError from "../errors/sendError";
 export default function Authentication() {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const authHeader = req.headers.authorization;
+      // * Step 1: Extract token from cookie (preferred) or Authorization header (fallback)
+      let token: string | undefined;
 
-      // * Step 1: Check if the Authorization header is present
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      // Try cookie first (HttpOnly - more secure)
+      token = req.cookies?.["auth-token"];
+
+      // Fallback to Authorization header for backward compatibility
+      if (!token) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith("Bearer ")) {
+          token = authHeader.split(" ")[1];
+        }
+      }
+
+      // Check if token exists
+      if (!token) {
         throw new AppError(
           httpStatusCode.UNAUTHORIZED,
           "You are not authorized!",
         );
       }
 
-      // * Step 2: Extract the token
-      const token = authHeader.split(" ")[1];
-
-      // * Step 3: Verify the token
+      // * Step 2: Verify the token
       const decoded = verifyToken(token) as TJwtPayload;
 
       if (!decoded) {
@@ -77,14 +86,6 @@ export default function Authentication() {
       } else {
         // Check regular User model
         user = await User.findById(userId);
-        const isUserExist = await User.findOne({ email });
-
-        if (!isUserExist) {
-          throw new AppError(
-            httpStatusCode.NOT_FOUND,
-            "This user is not found!",
-          );
-        }
 
         if (!user) {
           throw new AppError(

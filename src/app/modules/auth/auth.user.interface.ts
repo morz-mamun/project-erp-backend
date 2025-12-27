@@ -32,6 +32,8 @@ export interface IUser extends Document {
   isActive: boolean;
   isDeleted: boolean;
   lastLogin?: Date;
+  failedLoginAttempts: number;
+  lockUntil?: Date;
   createdAt: Date;
   updatedAt: Date;
   // Instance methods

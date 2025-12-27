@@ -34,8 +34,16 @@ const UserSchema: Schema<IUser> = new mongoose.Schema(
     password: {
       type: String,
       required: [true, "Please add a password"],
-      minlength: [6, "Password must be at least 6 characters"],
+      minlength: [8, "Password must be at least 8 characters"],
       select: false,
+      validate: {
+        validator: function (v: string) {
+          // At least one uppercase, one lowercase, one number
+          return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(v);
+        },
+        message:
+          "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+      },
     },
     role: {
       type: String,
@@ -59,6 +67,13 @@ const UserSchema: Schema<IUser> = new mongoose.Schema(
       default: false,
     },
     lastLogin: {
+      type: Date,
+    },
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockUntil: {
       type: Date,
     },
   },

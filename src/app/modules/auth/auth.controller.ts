@@ -11,18 +11,22 @@ import { configuration } from "../../config/config";
 const loginUser = async (req: Request, res: Response, next: NextFunction) => {
   const result = await AuthService.loginUser(req.body);
 
-  // Set token in cookie
-  res.cookie("token", result.accessToken, {
-    httpOnly: true,
-    secure: configuration.env === "production",
-    sameSite: "strict",
+  // Set token in HttpOnly cookie (secure, not accessible via JavaScript)
+  res.cookie("auth-token", result.accessToken, {
+    httpOnly: true, // Not accessible via JavaScript (XSS protection)
+    secure: configuration.env === "production", // HTTPS only in production
+    sameSite: configuration.env === "production" ? "strict" : "lax", // CSRF protection
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    path: "/", // Available across the entire site
   });
 
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
     success: true,
     message: "Login successful",
-    data: result,
+    data: {
+      user: result.user, // Don't send token in response body
+    },
   });
   next();
 };
@@ -31,14 +35,19 @@ const loginUser = async (req: Request, res: Response, next: NextFunction) => {
  * Logout user
  */
 const logoutUser = async (req: Request, res: Response, next: NextFunction) => {
-  const token = req?.cookies?.token;
+  const token = req?.cookies?.["auth-token"];
   if (!token) {
     return next(
       new Error("You are not logged in! Please log in to get access."),
     );
   }
 
-  res.clearCookie("token");
+  res.clearCookie("auth-token", {
+    httpOnly: true,
+    secure: configuration.env === "production",
+    sameSite: configuration.env === "production" ? "strict" : "lax",
+    path: "/",
+  });
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
     success: true,

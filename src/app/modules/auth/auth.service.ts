@@ -51,18 +51,52 @@ const loginUser = async (payload: {
       throw new AppError(httpStatusCode.FORBIDDEN, "Your company is suspended");
     }
 
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      const minutesLeft = Math.ceil(
+        (user.lockUntil.getTime() - Date.now()) / (1000 * 60),
+      );
+      throw new AppError(
+        httpStatusCode.FORBIDDEN,
+        `Account is locked. Please try again in ${minutesLeft} minute(s).`,
+      );
+    }
+
     // Verify password
     const isPasswordMatched = await user.matchPassword(password);
     if (!isPasswordMatched) {
-      throw new AppError(httpStatusCode.UNAUTHORIZED, "Invalid credentials");
+      // Increment failed login attempts
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+
+      // Lock account after 5 failed attempts
+      if (user.failedLoginAttempts >= 5) {
+        user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        await user.save();
+        throw new AppError(
+          httpStatusCode.FORBIDDEN,
+          "Account locked due to too many failed login attempts. Please try again in 15 minutes.",
+        );
+      }
+
+      await user.save();
+      throw new AppError(
+        httpStatusCode.UNAUTHORIZED,
+        `Invalid credentials. ${5 - user.failedLoginAttempts} attempt(s) remaining.`,
+      );
     }
+
+    // Reset failed attempts on successful login
+    user.failedLoginAttempts = 0;
+    user.lockUntil = undefined;
 
     // Generate JWT token
     const jwtPayload: TJwtPayload = {
       email: user.email,
       userId: user._id as mongoose.Types.ObjectId,
       role: user.role,
-      companyId: user.companyId as mongoose.Types.ObjectId,
+      companyId:
+        (user.companyId as any)?._id ||
+        (user.companyId as mongoose.Types.ObjectId),
     };
 
     const token = createToken(jwtPayload);

@@ -58,6 +58,17 @@ router.delete(
   ProductController.deleteCategory,
 );
 
+/**
+ * Toggle category status (activate/deactivate)
+ */
+router.patch(
+  "/categories/:id/toggle-status",
+  authorize(UserRole.COMPANY_ADMIN),
+  requirePermission("category", "update"),
+  activityLogger("TOGGLE_CATEGORY_STATUS", "Category"),
+  ProductController.toggleCategoryStatus,
+);
+
 // ============ BRAND ROUTES ============
 
 /**
@@ -100,6 +111,17 @@ router.delete(
   requirePermission("brand", "delete"),
   activityLogger("DELETE_BRAND", "Brand"),
   ProductController.deleteBrand,
+);
+
+/**
+ * Toggle brand status (activate/deactivate)
+ */
+router.patch(
+  "/brands/:id/toggle-status",
+  authorize(UserRole.COMPANY_ADMIN),
+  requirePermission("brand", "update"),
+  activityLogger("TOGGLE_BRAND_STATUS", "Brand"),
+  ProductController.toggleBrandStatus,
 );
 
 // ============ PRODUCT ROUTES ============

@@ -65,13 +65,71 @@ const createCategory = async (
 };
 
 /**
- * Get all categories for company
+ * Get all categories for company with pagination and search
  */
-const getAllCategories = async (companyId: string): Promise<ICategory[]> => {
-  const categories = await Category.find({ companyId, isActive: true }).sort({
-    name: 1,
-  });
-  return categories;
+const getAllCategories = async (
+  companyId: string,
+  query: {
+    search?: string;
+    isActive?: boolean;
+    page?: number;
+    limit?: number;
+  } = {},
+): Promise<{ categories: any[]; metadata: any }> => {
+  const { search, isActive, page = 1, limit = 50 } = query;
+
+  const filter: any = { companyId: new mongoose.Types.ObjectId(companyId) };
+  if (isActive !== undefined) filter.isActive = isActive;
+  if (search) filter.name = { $regex: search, $options: "i" };
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  // Get categories with product count
+  const categories = await Category.aggregate([
+    { $match: filter },
+    {
+      $lookup: {
+        from: "products",
+        let: { categoryId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$categoryId", "$$categoryId"] },
+                  { $eq: ["$isActive", true] },
+                ],
+              },
+            },
+          },
+          { $count: "count" },
+        ],
+        as: "productCount",
+      },
+    },
+    {
+      $addFields: {
+        productCount: {
+          $ifNull: [{ $arrayElemAt: ["$productCount.count", 0] }, 0],
+        },
+      },
+    },
+    { $sort: { name: 1 } },
+    { $skip: skip },
+    { $limit: Number(limit) },
+  ]);
+
+  const total = await Category.countDocuments(filter);
+
+  return {
+    categories,
+    metadata: {
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      pages: Math.ceil(total / Number(limit)),
+    },
+  };
 };
 
 /**
@@ -89,17 +147,42 @@ const updateCategory = async (
 };
 
 /**
- * Delete category
+ * Toggle category status (soft delete/restore)
  */
-const deleteCategory = async (id: string): Promise<void> => {
+const toggleCategoryStatus = async (
+  id: string,
+  isActive: boolean,
+): Promise<ICategory> => {
+  // Check if category has active products when trying to deactivate
+  if (!isActive) {
+    const productCount = await Product.countDocuments({
+      categoryId: id,
+      isActive: true,
+    });
+    if (productCount > 0) {
+      throw new AppError(
+        httpStatusCode.BAD_REQUEST,
+        `Cannot deactivate category. It has ${productCount} active product(s).`,
+      );
+    }
+  }
+
   const category = await Category.findByIdAndUpdate(
     id,
-    { isActive: false },
+    { isActive },
     { new: true },
   );
   if (!category) {
     throw new AppError(httpStatusCode.NOT_FOUND, "Category not found");
   }
+  return category;
+};
+
+/**
+ * Delete category (legacy - now uses soft delete)
+ */
+const deleteCategory = async (id: string): Promise<void> => {
+  await toggleCategoryStatus(id, false);
 };
 
 /**
@@ -119,13 +202,71 @@ const createBrand = async (
 };
 
 /**
- * Get all brands for company
+ * Get all brands for company with pagination and search
  */
-const getAllBrands = async (companyId: string): Promise<IBrand[]> => {
-  const brands = await Brand.find({ companyId, isActive: true }).sort({
-    name: 1,
-  });
-  return brands;
+const getAllBrands = async (
+  companyId: string,
+  query: {
+    search?: string;
+    isActive?: boolean;
+    page?: number;
+    limit?: number;
+  } = {},
+): Promise<{ brands: any[]; metadata: any }> => {
+  const { search, isActive, page = 1, limit = 50 } = query;
+
+  const filter: any = { companyId: new mongoose.Types.ObjectId(companyId) };
+  if (isActive !== undefined) filter.isActive = isActive;
+  if (search) filter.name = { $regex: search, $options: "i" };
+
+  const skip = (Number(page) - 1) * Number(limit);
+
+  // Get brands with product count
+  const brands = await Brand.aggregate([
+    { $match: filter },
+    {
+      $lookup: {
+        from: "products",
+        let: { brandId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$brandId", "$$brandId"] },
+                  { $eq: ["$isActive", true] },
+                ],
+              },
+            },
+          },
+          { $count: "count" },
+        ],
+        as: "productCount",
+      },
+    },
+    {
+      $addFields: {
+        productCount: {
+          $ifNull: [{ $arrayElemAt: ["$productCount.count", 0] }, 0],
+        },
+      },
+    },
+    { $sort: { name: 1 } },
+    { $skip: skip },
+    { $limit: Number(limit) },
+  ]);
+
+  const total = await Brand.countDocuments(filter);
+
+  return {
+    brands,
+    metadata: {
+      total,
+      page: Number(page),
+      limit: Number(limit),
+      pages: Math.ceil(total / Number(limit)),
+    },
+  };
 };
 
 /**
@@ -143,17 +284,38 @@ const updateBrand = async (
 };
 
 /**
- * Delete brand
+ * Toggle brand status (soft delete/restore)
  */
-const deleteBrand = async (id: string): Promise<void> => {
-  const brand = await Brand.findByIdAndUpdate(
-    id,
-    { isActive: false },
-    { new: true },
-  );
+const toggleBrandStatus = async (
+  id: string,
+  isActive: boolean,
+): Promise<IBrand> => {
+  // Check if brand has active products when trying to deactivate
+  if (!isActive) {
+    const productCount = await Product.countDocuments({
+      brandId: id,
+      isActive: true,
+    });
+    if (productCount > 0) {
+      throw new AppError(
+        httpStatusCode.BAD_REQUEST,
+        `Cannot deactivate brand. It has ${productCount} active product(s).`,
+      );
+    }
+  }
+
+  const brand = await Brand.findByIdAndUpdate(id, { isActive }, { new: true });
   if (!brand) {
     throw new AppError(httpStatusCode.NOT_FOUND, "Brand not found");
   }
+  return brand;
+};
+
+/**
+ * Delete brand (legacy - now uses soft delete)
+ */
+const deleteBrand = async (id: string): Promise<void> => {
+  await toggleBrandStatus(id, false);
 };
 
 /**
@@ -332,11 +494,13 @@ export const ProductService = {
   getAllCategories,
   updateCategory,
   deleteCategory,
+  toggleCategoryStatus,
   // Brand
   createBrand,
   getAllBrands,
   updateBrand,
   deleteBrand,
+  toggleBrandStatus,
   // Product
   createProduct,
   getAllProducts,

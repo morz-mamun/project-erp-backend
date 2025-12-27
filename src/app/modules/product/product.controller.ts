@@ -32,7 +32,10 @@ const getAllCategories = async (
   next: NextFunction,
 ) => {
   const { companyId } = req.user!;
-  const result = await ProductService.getAllCategories(companyId!.toString());
+  const result = await ProductService.getAllCategories(
+    companyId!.toString(),
+    req.query,
+  );
 
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
@@ -74,6 +77,26 @@ const deleteCategory = async (
   next();
 };
 
+const toggleCategoryStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { isActive } = req.body;
+  const result = await ProductService.toggleCategoryStatus(
+    req.params.id,
+    isActive,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatusCode.OK,
+    success: true,
+    message: `Category ${isActive ? "activated" : "deactivated"} successfully`,
+    data: result,
+  });
+  next();
+};
+
 // ============ BRAND CONTROLLERS ============
 
 const createBrand = async (req: Request, res: Response, next: NextFunction) => {
@@ -98,7 +121,10 @@ const getAllBrands = async (
   next: NextFunction,
 ) => {
   const { companyId } = req.user!;
-  const result = await ProductService.getAllBrands(companyId!.toString());
+  const result = await ProductService.getAllBrands(
+    companyId!.toString(),
+    req.query,
+  );
 
   sendResponse(res, {
     statusCode: httpStatusCode.OK,
@@ -128,6 +154,26 @@ const deleteBrand = async (req: Request, res: Response, next: NextFunction) => {
     statusCode: httpStatusCode.OK,
     success: true,
     message: "Brand deleted successfully",
+  });
+  next();
+};
+
+const toggleBrandStatus = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { isActive } = req.body;
+  const result = await ProductService.toggleBrandStatus(
+    req.params.id,
+    isActive,
+  );
+
+  sendResponse(res, {
+    statusCode: httpStatusCode.OK,
+    success: true,
+    message: `Brand ${isActive ? "activated" : "deactivated"} successfully`,
+    data: result,
   });
   next();
 };
@@ -240,11 +286,13 @@ export const ProductController = {
   getAllCategories: asyncHandler(getAllCategories),
   updateCategory: asyncHandler(updateCategory),
   deleteCategory: asyncHandler(deleteCategory),
+  toggleCategoryStatus: asyncHandler(toggleCategoryStatus),
   // Brand
   createBrand: asyncHandler(createBrand),
   getAllBrands: asyncHandler(getAllBrands),
   updateBrand: asyncHandler(updateBrand),
   deleteBrand: asyncHandler(deleteBrand),
+  toggleBrandStatus: asyncHandler(toggleBrandStatus),
   // Product
   createProduct: asyncHandler(createProduct),
   getAllProducts: asyncHandler(getAllProducts),

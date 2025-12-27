@@ -4,13 +4,15 @@ import Authentication from "../../middlewares/authentication";
 import { authorize } from "../../middlewares/rbac";
 import { UserRole } from "../../utils/enum/userRole";
 import activityLogger from "../../middlewares/activityLogger";
+import { loginRateLimiter } from "../../middlewares/rateLimiter";
 
 const router = Router();
 
 /**
  * Login user (public)
+ * Rate limited to 5 attempts per 15 minutes per IP
  */
-router.post("/login", AuthController.loginUser);
+router.post("/login", loginRateLimiter, AuthController.loginUser);
 
 /**
  * Logout user
