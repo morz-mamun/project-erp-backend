@@ -12,13 +12,21 @@ const loginUser = async (req: Request, res: Response, next: NextFunction) => {
   const result = await AuthService.loginUser(req.body);
 
   // Set token in HttpOnly cookie (secure, not accessible via JavaScript)
-  res.cookie("auth-token", result.accessToken, {
-    httpOnly: true, // Not accessible via JavaScript (XSS protection)
-    secure: configuration.env === "production", // HTTPS only in production
-    sameSite: configuration.env === "production" ? "strict" : "lax", // CSRF protection
-    maxAge: 24 * 60 * 60 * 1000, // 1 day
-    path: "/", // Available across the entire site
-  });
+  // Set token in HttpOnly cookie (secure, not accessible via JavaScript)
+  const cookieOptions = {
+    httpOnly: true,
+    secure: configuration.env === "production",
+    sameSite: (configuration.env === "production" ? "strict" : "lax") as
+      | "strict"
+      | "lax",
+    maxAge: 24 * 60 * 60 * 1000,
+    path: "/",
+  };
+
+  console.log("DEBUG: Env =", configuration.env);
+  console.log("DEBUG: Cookie Options =", cookieOptions);
+
+  res.cookie("auth-token", result.accessToken, cookieOptions);
 
   sendResponse(res, {
     statusCode: httpStatusCode.OK,

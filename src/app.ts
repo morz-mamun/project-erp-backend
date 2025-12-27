@@ -6,6 +6,7 @@ import { securityHeaders } from "./app/middlewares/securityHeaders";
 import appRoutes from "./app/routes/router";
 import notFound from "./app/middlewares/notFound";
 import errorHandler from "./app/middlewares/errorHandler";
+import { configuration } from "./app/config/config";
 
 // ** express app **
 const app: Application = express();
@@ -18,15 +19,24 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ** CORS - Improved configuration **
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",")
-  : ["http://localhost:3000"];
+const allowedOrigins = configuration.corsOrigin
+  ? configuration.corsOrigin.split(",").map((origin) => origin.trim())
+  : ["http://localhost:3000", "http://127.0.0.1:3000"];
+
+console.log("Allowed CORS Origins:", allowedOrigins);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, Postman, etc.)
       if (!origin) return callback(null, true);
+
+      console.log(
+        "CORS Check - Origin:",
+        origin,
+        "Allowed:",
+        allowedOrigins.includes(origin),
+      );
 
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
