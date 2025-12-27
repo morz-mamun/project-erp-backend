@@ -20,6 +20,13 @@ const GlobalSettingsSchema: Schema<IGlobalSettings> = new mongoose.Schema(
       type: String,
       default: "support@erp.com",
     },
+    systemFeatures: {
+      inventory: { type: Boolean, default: true },
+      sales: { type: Boolean, default: true },
+      crm: { type: Boolean, default: true },
+      hrm: { type: Boolean, default: true },
+      reports: { type: Boolean, default: true },
+    },
     planLimits: {
       FREE: {
         maxUsers: { type: Number, default: 2 },
