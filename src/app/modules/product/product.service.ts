@@ -6,6 +6,45 @@ import AppError from "../../errors/functions/AppError";
 import { httpStatusCode } from "../../utils/enum/statusCode";
 
 /**
+ * Generate SKU based on category
+ */
+const generateSKU = async (
+  categoryId: string,
+  companyId: string,
+): Promise<string> => {
+  // Get category to extract name
+  const category = await Category.findById(categoryId);
+  if (!category) {
+    throw new AppError(httpStatusCode.NOT_FOUND, "Category not found");
+  }
+
+  // Create category prefix (first 3-4 letters, uppercase)
+  const categoryPrefix = category.name
+    .replace(/[^a-zA-Z]/g, "") // Remove non-alphabetic characters
+    .substring(0, 4)
+    .toUpperCase();
+
+  // Find the last product with this category prefix
+  const lastProduct = await Product.findOne({
+    companyId,
+    sku: { $regex: `^${categoryPrefix}-` },
+  }).sort({ createdAt: -1 });
+
+  let counter = 1;
+  if (lastProduct && lastProduct.sku) {
+    // Extract counter from last SKU (e.g., "CEME-00005" -> 5)
+    const match = lastProduct.sku.match(/-([0-9]+)$/);
+    if (match) {
+      counter = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  // Format: CATEGORY-00001
+  const sku = `${categoryPrefix}-${counter.toString().padStart(5, "0")}`;
+  return sku;
+};
+
+/**
  * Create new category
  */
 const createCategory = async (
@@ -125,14 +164,21 @@ const createProduct = async (
   userId: string,
   payload: Partial<IProduct>,
 ): Promise<IProduct> => {
-  // Check if SKU already exists in company
-  const existing = await Product.findOne({ companyId, sku: payload.sku });
-  if (existing) {
-    throw new AppError(httpStatusCode.BAD_REQUEST, "SKU already exists");
+  // Auto-generate SKU if not provided
+  let sku = payload.sku;
+  if (!sku) {
+    sku = await generateSKU(payload.categoryId!.toString(), companyId);
+  } else {
+    // Check if SKU already exists in company
+    const existing = await Product.findOne({ companyId, sku });
+    if (existing) {
+      throw new AppError(httpStatusCode.BAD_REQUEST, "SKU already exists");
+    }
   }
 
   const product = await Product.create({
     ...payload,
+    sku,
     companyId,
     createdBy: userId,
   });

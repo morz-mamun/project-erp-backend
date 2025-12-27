@@ -80,7 +80,6 @@ const ProductSchema: Schema<IProduct> = new mongoose.Schema(
     },
     sku: {
       type: String,
-      required: [true, "SKU is required"],
       trim: true,
     },
     description: {
@@ -95,6 +94,10 @@ const ProductSchema: Schema<IProduct> = new mongoose.Schema(
     brandId: {
       type: Schema.Types.ObjectId,
       ref: "Brand",
+    },
+    quality: {
+      type: String,
+      trim: true,
     },
     companyId: {
       type: Schema.Types.ObjectId,

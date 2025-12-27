@@ -56,6 +56,7 @@ export interface IProduct extends Document {
   description?: string;
   categoryId: Types.ObjectId;
   brandId?: Types.ObjectId;
+  quality?: string; // Product quality/grade (e.g., "OPC 53 Grade", "Grade A")
   companyId: Types.ObjectId;
   images: IProductImage[];
   variations: IProductVariation[];

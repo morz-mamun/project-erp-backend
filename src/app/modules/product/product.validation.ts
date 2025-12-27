@@ -50,13 +50,14 @@ export const updateBrandSchema = z.object({
 export const createProductSchema = z.object({
   body: z.object({
     name: z.string().min(1, "Product name is required"),
-    sku: z.string().min(1, "SKU is required"),
+    sku: z.string().min(1, "SKU is required").optional(), // Auto-generated if not provided
     description: z.string().optional(),
     categoryId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid category ID"),
     brandId: z
       .string()
       .regex(/^[0-9a-fA-F]{24}$/, "Invalid brand ID")
       .optional(),
+    quality: z.string().optional(), // Product quality/grade
     images: z
       .array(
         z.object({
