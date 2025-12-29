@@ -21,6 +21,7 @@ export interface IBrand extends Document {
   name: string;
   description?: string;
   logo?: string;
+  categories: Types.ObjectId[];
   companyId: Types.ObjectId;
   isActive: boolean;
   createdAt: Date;

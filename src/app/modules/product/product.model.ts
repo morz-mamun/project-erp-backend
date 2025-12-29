@@ -50,6 +50,12 @@ const BrandSchema: Schema<IBrand> = new mongoose.Schema(
     logo: {
       type: String,
     },
+    categories: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Category",
+      },
+    ],
     companyId: {
       type: Schema.Types.ObjectId,
       ref: "Company",

@@ -211,12 +211,14 @@ const getAllBrands = async (
     isActive?: boolean;
     page?: number;
     limit?: number;
+    categoryId?: string;
   } = {},
 ): Promise<{ brands: any[]; metadata: any }> => {
-  const { search, isActive, page = 1, limit = 50 } = query;
+  const { search, isActive, page = 1, limit = 50, categoryId } = query;
 
   const filter: any = { companyId: new mongoose.Types.ObjectId(companyId) };
   if (isActive !== undefined) filter.isActive = String(isActive) === "true";
+  if (categoryId) filter.categories = new mongoose.Types.ObjectId(categoryId);
   if (search) filter.name = { $regex: search, $options: "i" };
 
   const skip = (Number(page) - 1) * Number(limit);
