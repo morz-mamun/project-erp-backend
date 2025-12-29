@@ -91,6 +91,7 @@ export const createProductSchema = z.object({
       .max(100, "Tax rate must be between 0 and 100")
       .default(0),
     unit: z.string().default("pcs"),
+    stock: z.number().min(0).default(0),
   }),
 });
 
@@ -136,6 +137,7 @@ export const updateProductSchema = z.object({
       .max(100, "Tax rate must be between 0 and 100")
       .optional(),
     unit: z.string().optional(),
+    stock: z.number().min(0).optional(),
     isActive: z.boolean().optional(),
   }),
 });

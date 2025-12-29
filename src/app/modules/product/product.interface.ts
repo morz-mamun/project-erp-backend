@@ -65,6 +65,7 @@ export interface IProduct extends Document {
   costPrice?: number;
   taxRate: number;
   unit: string;
+  stock: number;
   isActive: boolean;
   createdBy: Types.ObjectId;
   createdAt: Date;

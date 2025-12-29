@@ -340,6 +340,8 @@ const createProduct = async (
     }
   }
 
+  console.log("Product Payload", payload);
+
   const product = await Product.create({
     ...payload,
     sku,
@@ -466,6 +468,8 @@ const updateProduct = async (
   id: string,
   payload: Partial<IProduct>,
 ): Promise<IProduct> => {
+  console.log("Product Payload", payload);
+
   const product = await Product.findByIdAndUpdate(id, payload, { new: true })
     .populate("categoryId", "name")
     .populate("brandId", "name");

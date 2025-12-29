@@ -144,6 +144,10 @@ const ProductSchema: Schema<IProduct> = new mongoose.Schema(
       type: String,
       default: "pcs",
     },
+    stock: {
+      type: Number,
+      default: 0,
+    },
     isActive: {
       type: Boolean,
       default: true,
