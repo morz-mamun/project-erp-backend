@@ -28,7 +28,7 @@ export interface IStockMovement extends Document {
   companyId: Types.ObjectId;
   variationSku?: string;
   type: StockMovementType;
-  quantity: number;
+  stock: number;
   previousStock: number;
   newStock: number;
   reason?: string;

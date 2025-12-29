@@ -18,6 +18,30 @@ const getInventory = async (
     limit?: number;
   } = {},
 ): Promise<{ inventory: IInventory[]; metadata: any }> => {
+  // Sync Inventory: Ensure all active products have an inventory record
+  const products = await Product.find({ companyId, isActive: true }).select(
+    "_id",
+  );
+  const existingInventory = await Inventory.find({ companyId }).select(
+    "productId",
+  );
+  const existingProductIds = new Set(
+    existingInventory.map((i) => i.productId.toString()),
+  );
+
+  const missingInventoryPayloads = products
+    .filter((p) => !existingProductIds.has(p._id.toString()))
+    .map((p) => ({
+      productId: p._id,
+      companyId,
+      currentStock: 0,
+      minStockLevel: 10,
+    }));
+
+  if (missingInventoryPayloads.length > 0) {
+    await Inventory.insertMany(missingInventoryPayloads);
+  }
+
   const { lowStock, productId, page = 1, limit = 20 } = query;
 
   const filter: any = { companyId };
@@ -26,12 +50,12 @@ const getInventory = async (
     filter.$expr = { $lt: ["$currentStock", "$minStockLevel"] };
   }
 
-  const skip = (page - 1) * limit;
+  const skip = (Number(page) - 1) * Number(limit);
 
   const inventory = await Inventory.find(filter)
-    .populate("productId", "name sku basePrice")
+    .populate("productId", "name sku basePrice unit")
     .skip(skip)
-    .limit(limit)
+    .limit(Number(limit))
     .sort({ currentStock: 1 });
 
   const total = await Inventory.countDocuments(filter);
@@ -40,9 +64,9 @@ const getInventory = async (
     inventory,
     metadata: {
       total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
+      page: Number(page),
+      limit: Number(limit),
+      pages: Math.ceil(total / Number(limit)),
     },
   };
 };
@@ -63,14 +87,26 @@ const stockIn = async (
 ): Promise<IInventory> => {
   const { productId, variationSku, quantity, reason, notes } = payload;
 
-  // Find inventory
-  const inventory = await Inventory.findOne({
+  // Find or Create inventory
+  let inventory = await Inventory.findOne({
     companyId,
     productId,
     variationSku,
   });
+
   if (!inventory) {
-    throw new AppError(httpStatusCode.NOT_FOUND, "Inventory not found");
+    const productExists = await Product.findById(productId);
+    if (!productExists) {
+      throw new AppError(httpStatusCode.NOT_FOUND, "Product not found");
+    }
+
+    inventory = await Inventory.create({
+      companyId,
+      productId,
+      variationSku,
+      currentStock: 0,
+      minStockLevel: 10,
+    });
   }
 
   const previousStock = inventory.currentStock;
@@ -87,7 +123,7 @@ const stockIn = async (
     companyId,
     variationSku,
     type: StockMovementType.IN,
-    quantity,
+    stock: quantity,
     previousStock,
     newStock,
     reason: reason || "Purchase",
@@ -143,7 +179,7 @@ const stockOut = async (
     companyId,
     variationSku,
     type: StockMovementType.OUT,
-    quantity,
+    stock: quantity,
     previousStock,
     newStock,
     reason: "Sale",
@@ -165,24 +201,52 @@ const adjustStock = async (
     productId: string;
     variationSku?: string;
     quantity: number;
+    type?: "add" | "remove" | "set";
     reason: string;
     notes?: string;
   },
 ): Promise<IInventory> => {
-  const { productId, variationSku, quantity, reason, notes } = payload;
+  const {
+    productId,
+    variationSku,
+    quantity,
+    type = "add",
+    reason,
+    notes,
+  } = payload;
 
-  // Find inventory
-  const inventory = await Inventory.findOne({
+  // Find or Create inventory
+  let inventory = await Inventory.findOne({
     companyId,
     productId,
     variationSku,
   });
+
   if (!inventory) {
-    throw new AppError(httpStatusCode.NOT_FOUND, "Inventory not found");
+    const productExists = await Product.findById(productId);
+    if (!productExists) {
+      throw new AppError(httpStatusCode.NOT_FOUND, "Product not found");
+    }
+
+    inventory = await Inventory.create({
+      companyId,
+      productId,
+      variationSku,
+      currentStock: 0,
+      minStockLevel: 10,
+    });
   }
 
   const previousStock = inventory.currentStock;
-  const newStock = previousStock + quantity; // Can be negative for reduction
+  let newStock = previousStock;
+
+  if (type === "add") {
+    newStock = previousStock + quantity;
+  } else if (type === "remove") {
+    newStock = previousStock - quantity;
+  } else if (type === "set") {
+    newStock = quantity;
+  }
 
   if (newStock < 0) {
     throw new AppError(httpStatusCode.BAD_REQUEST, "Stock cannot be negative");
@@ -198,7 +262,7 @@ const adjustStock = async (
     companyId,
     variationSku,
     type: StockMovementType.ADJUSTMENT,
-    quantity,
+    stock: Math.abs(newStock - previousStock),
     previousStock,
     newStock,
     reason,

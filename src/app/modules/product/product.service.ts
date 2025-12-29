@@ -353,7 +353,7 @@ const createProduct = async (
   await Inventory.create({
     productId: product._id,
     companyId,
-    currentStock: (payload as any).quantity || 0,
+    currentStock: (payload as any).stock || 0,
     minStockLevel: 10,
   });
 
@@ -477,6 +477,16 @@ const updateProduct = async (
   if (!product) {
     throw new AppError(httpStatusCode.NOT_FOUND, "Product not found");
   }
+
+  // Sync stock across Inventory if present in payload
+  if (payload.stock !== undefined) {
+    await Inventory.findOneAndUpdate(
+      { productId: id, companyId: product.companyId },
+      { currentStock: payload.stock },
+      { new: true },
+    );
+  }
+
   return product;
 };
 

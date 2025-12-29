@@ -85,9 +85,9 @@ const StockMovementSchema: Schema<IStockMovement> = new mongoose.Schema(
       enum: Object.values(StockMovementType),
       required: [true, "Movement type is required"],
     },
-    quantity: {
+    stock: {
       type: Number,
-      required: [true, "Quantity is required"],
+      required: [true, "Stock is required"],
     },
     previousStock: {
       type: Number,
