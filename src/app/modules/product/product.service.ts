@@ -79,7 +79,7 @@ const getAllCategories = async (
   const { search, isActive, page = 1, limit = 50 } = query;
 
   const filter: any = { companyId: new mongoose.Types.ObjectId(companyId) };
-  if (isActive !== undefined) filter.isActive = isActive;
+  if (isActive !== undefined) filter.isActive = String(isActive) === "true";
   if (search) filter.name = { $regex: search, $options: "i" };
 
   const skip = (Number(page) - 1) * Number(limit);
@@ -216,7 +216,7 @@ const getAllBrands = async (
   const { search, isActive, page = 1, limit = 50 } = query;
 
   const filter: any = { companyId: new mongoose.Types.ObjectId(companyId) };
-  if (isActive !== undefined) filter.isActive = isActive;
+  if (isActive !== undefined) filter.isActive = String(isActive) === "true";
   if (search) filter.name = { $regex: search, $options: "i" };
 
   const skip = (Number(page) - 1) * Number(limit);

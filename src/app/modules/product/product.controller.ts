@@ -1,4 +1,4 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import { ProductService } from "./product.service";
 import sendResponse from "../../utils/sendResponse";
 import { httpStatusCode } from "../../utils/enum/statusCode";
@@ -6,11 +6,7 @@ import { asyncHandler } from "../../utils/asyncHandler";
 
 // ============ CATEGORY CONTROLLERS ============
 
-const createCategory = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const createCategory = async (req: Request, res: Response) => {
   const { companyId } = req.user!;
   const result = await ProductService.createCategory(
     companyId!.toString(),
@@ -23,14 +19,9 @@ const createCategory = async (
     message: "Category created successfully",
     data: result,
   });
-  next();
 };
 
-const getAllCategories = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllCategories = async (req: Request, res: Response) => {
   const { companyId } = req.user!;
   const result = await ProductService.getAllCategories(
     companyId!.toString(),
@@ -43,14 +34,9 @@ const getAllCategories = async (
     message: "Categories retrieved successfully",
     data: result,
   });
-  next();
 };
 
-const updateCategory = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const updateCategory = async (req: Request, res: Response) => {
   const result = await ProductService.updateCategory(req.params.id, req.body);
 
   sendResponse(res, {
@@ -59,14 +45,9 @@ const updateCategory = async (
     message: "Category updated successfully",
     data: result,
   });
-  next();
 };
 
-const deleteCategory = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const deleteCategory = async (req: Request, res: Response) => {
   await ProductService.deleteCategory(req.params.id);
 
   sendResponse(res, {
@@ -74,14 +55,9 @@ const deleteCategory = async (
     success: true,
     message: "Category deleted successfully",
   });
-  next();
 };
 
-const toggleCategoryStatus = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const toggleCategoryStatus = async (req: Request, res: Response) => {
   const { isActive } = req.body;
   const result = await ProductService.toggleCategoryStatus(
     req.params.id,
@@ -94,12 +70,11 @@ const toggleCategoryStatus = async (
     message: `Category ${isActive ? "activated" : "deactivated"} successfully`,
     data: result,
   });
-  next();
 };
 
 // ============ BRAND CONTROLLERS ============
 
-const createBrand = async (req: Request, res: Response, next: NextFunction) => {
+const createBrand = async (req: Request, res: Response) => {
   const { companyId } = req.user!;
   const result = await ProductService.createBrand(
     companyId!.toString(),
@@ -112,14 +87,9 @@ const createBrand = async (req: Request, res: Response, next: NextFunction) => {
     message: "Brand created successfully",
     data: result,
   });
-  next();
 };
 
-const getAllBrands = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllBrands = async (req: Request, res: Response) => {
   const { companyId } = req.user!;
   const result = await ProductService.getAllBrands(
     companyId!.toString(),
@@ -132,10 +102,9 @@ const getAllBrands = async (
     message: "Brands retrieved successfully",
     data: result,
   });
-  next();
 };
 
-const updateBrand = async (req: Request, res: Response, next: NextFunction) => {
+const updateBrand = async (req: Request, res: Response) => {
   const result = await ProductService.updateBrand(req.params.id, req.body);
 
   sendResponse(res, {
@@ -144,10 +113,9 @@ const updateBrand = async (req: Request, res: Response, next: NextFunction) => {
     message: "Brand updated successfully",
     data: result,
   });
-  next();
 };
 
-const deleteBrand = async (req: Request, res: Response, next: NextFunction) => {
+const deleteBrand = async (req: Request, res: Response) => {
   await ProductService.deleteBrand(req.params.id);
 
   sendResponse(res, {
@@ -155,14 +123,9 @@ const deleteBrand = async (req: Request, res: Response, next: NextFunction) => {
     success: true,
     message: "Brand deleted successfully",
   });
-  next();
 };
 
-const toggleBrandStatus = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const toggleBrandStatus = async (req: Request, res: Response) => {
   const { isActive } = req.body;
   const result = await ProductService.toggleBrandStatus(
     req.params.id,
@@ -175,16 +138,11 @@ const toggleBrandStatus = async (
     message: `Brand ${isActive ? "activated" : "deactivated"} successfully`,
     data: result,
   });
-  next();
 };
 
 // ============ PRODUCT CONTROLLERS ============
 
-const createProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const createProduct = async (req: Request, res: Response) => {
   const { companyId, userId } = req.user!;
   let imagePayload = req.body;
 
@@ -210,14 +168,9 @@ const createProduct = async (
     message: "Product created successfully",
     data: result,
   });
-  next();
 };
 
-const getAllProducts = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getAllProducts = async (req: Request, res: Response) => {
   const { companyId } = req.user!;
   const result = await ProductService.getAllProducts(
     companyId!.toString(),
@@ -230,14 +183,9 @@ const getAllProducts = async (
     message: "Products retrieved successfully",
     data: result,
   });
-  next();
 };
 
-const getProductById = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const getProductById = async (req: Request, res: Response) => {
   const result = await ProductService.getProductById(req.params.id);
 
   sendResponse(res, {
@@ -246,14 +194,9 @@ const getProductById = async (
     message: "Product retrieved successfully",
     data: result,
   });
-  next();
 };
 
-const updateProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const updateProduct = async (req: Request, res: Response) => {
   const result = await ProductService.updateProduct(req.params.id, req.body);
 
   sendResponse(res, {
@@ -262,14 +205,9 @@ const updateProduct = async (
     message: "Product updated successfully",
     data: result,
   });
-  next();
 };
 
-const deleteProduct = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const deleteProduct = async (req: Request, res: Response) => {
   await ProductService.deleteProduct(req.params.id);
 
   sendResponse(res, {
@@ -277,7 +215,6 @@ const deleteProduct = async (
     success: true,
     message: "Product deleted successfully",
   });
-  next();
 };
 
 export const ProductController = {

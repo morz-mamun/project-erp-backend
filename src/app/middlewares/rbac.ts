@@ -9,6 +9,8 @@ const PERMISSIONS: Record<TRole, any> = {
   [UserRole.SUPER_ADMIN]: {
     company: ["*"],
     user: ["*"],
+    // category: ["*"],
+    // brand: ["*"],
     product: ["*"],
     inventory: ["*"],
     sales: ["*"],

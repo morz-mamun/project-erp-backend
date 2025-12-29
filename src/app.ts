@@ -22,21 +22,18 @@ app.use(express.urlencoded({ extended: true }));
 const allowedOrigins = configuration.corsOrigin
   ? configuration.corsOrigin.split(",").map((origin) => origin.trim())
   : ["http://localhost:3000", "http://127.0.0.1:3000"];
-
-console.log("Allowed CORS Origins:", allowedOrigins);
-
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, Postman, etc.)
       if (!origin) return callback(null, true);
 
-      console.log(
-        "CORS Check - Origin:",
-        origin,
-        "Allowed:",
-        allowedOrigins.includes(origin),
-      );
+      // console.log(
+      //   "CORS Check - Origin:",
+      //   origin,
+      //   "Allowed:",
+      //   allowedOrigins.includes(origin),
+      // );
 
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
